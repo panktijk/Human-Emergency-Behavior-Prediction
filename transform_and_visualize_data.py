@@ -3,7 +3,6 @@ import pandas as pd
 import time
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
-from datetime import datetime
 
 def epoch_to_datetime(epoch):
     return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(epoch))
@@ -22,7 +21,7 @@ def trace_trajectory(df_temp, m):
     x, y = m(lon, lat)
     m.plot(x, y, 'o', markersize=5)
     #plt.plot(x, y, '-', color=np.random.rand(3,))
-    plt.plot(x, y, '-', color='yellow')
+    plt.plot(x, y, '-', color='yellow', linewidth = 1.75)
     
 def get_continuous_paths(df):
     splits = np.append(np.where(np.diff(df['Whether_Occupied']) != 0)[0], len(df)+1)+1
@@ -31,26 +30,26 @@ def get_continuous_paths(df):
     for split in splits:
         paths_df += [df[prev:split]]
         prev = split
-    return paths_df
+    return splits, paths_df
     
 def visualize(df):
-    paths_df = get_continuous_paths(df)
+    splits, paths_df = get_continuous_paths(df)
     m = Basemap(llcrnrlon=-122.56,llcrnrlat=37.4,urcrnrlon=-122,urcrnrlat=37.99, epsg=4269)
-    #df1 = df.iloc[7797212:7797220]
-    for path_df in paths_df[:10]:
-        #if (1 in path_df['Whether_Occupied']):
+    for path_df in paths_df[:50]:
+        if path_df.iloc[0]['Whether_Occupied'] == 1:
             trace_trajectory(path_df, m)   
-    #df2 = df.iloc[356768:356781]
-    #trace_trajectory(df2, m)
     m.arcgisimage(service='ESRI_Imagery_World_2D', xpixels = 2500, verbose= True)
+    plt.figure()
     plt.show()
     
-def get_earthquake_dates_and_locs(df):
+def get_earthquake_dates(df):
     dates = [t.split('T')[0] + ' ' + t.split('T')[1].split(':')[0] for t in df['time']]
-    lats = df['latitude']
-    lons = df['longitude']
-    return dates, lats, lons
+    return dates
     
 cabs_df, earthquakes_df = read_and_transform_data()
-visualize(cabs_df)
+earthquake_dates = get_earthquake_dates(earthquakes_df)
+normal_day_cabs_df = cabs_df[~cabs_df['Timestamp'].str.contains('|'.join(earthquake_dates))]
+visualize(normal_day_cabs_df)
+earthquake_day_cabs_df = cabs_df[cabs_df['Timestamp'].str.contains('|'.join(earthquake_dates))]
+visualize(earthquake_day_cabs_df)
 
